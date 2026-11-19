@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
 const BASE_URL = 'https://dev.mattr.art';
-const API_KEY = "77737774" // You'll provide this
+const API_KEY = process.env.API_KEY || '' // supply via env, never commit it
 const TEST_URL = 'https://example.com/test';
 const TEST_ID = `test-${Date.now()}`;
 let createdId = '';
