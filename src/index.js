@@ -16,9 +16,7 @@ const rateLimits = new Map();
 const checkRateLimit = (c) => {
     const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
     const now = Date.now();
-    const windowStart = now - RATE_LIMIT_WINDOW * 1000;
-    
-    const userLimits = rateLimits.get(ip) || { count: 0, windowStart };
+    const userLimits = rateLimits.get(ip) || { count: 0, windowStart: now };
     
     if (now - userLimits.windowStart > RATE_LIMIT_WINDOW * 1000) {
         rateLimits.set(ip, { count: 1, windowStart: now });
@@ -32,6 +30,12 @@ const checkRateLimit = (c) => {
     rateLimits.set(ip, { count: userLimits.count + 1, windowStart: userLimits.windowStart });
     return true;
 };
+
+// rate limit the API surface only; public /:urlId redirects must stay unlimited
+app.use("/api/*", async (c, next) => {
+    if (!checkRateLimit(c)) return c.text("Too many requests", 429);
+    await next();
+});
 
 const checkAuth = (c) => {
     const secret = c.req.header("X-Auth-Key");
