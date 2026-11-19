@@ -58,9 +58,7 @@ protectedRoutes.use("*", async (c, next) => {
     await next();
 });
 
-app.route("/api", protectedRoutes);
-
-// --- PUBLIC /api/verify ---
+// --- PUBLIC /api/verify (must be registered before the /api mount) ---
 app.get("/api/verify", async (c) => {
     const secret = c.req.header("X-Auth-Key");
     const apiKey = c.env.API_KEY;
@@ -69,13 +67,17 @@ app.get("/api/verify", async (c) => {
 
 // --- MANAGED ROUTES ---
 
-protectedRoutes.delete("/:urlId", async (c) => {
+const deleteUrl = async (c) => {
     const id = c.req.param('urlId');
     if (!id) return c.text("Missing id", 400);
 
     await c.env.REDIRS.delete(id);
     return c.text("Deleted", 200);
-});
+};
+
+// dashboard calls /api/delete/:urlId; keep /api/:urlId for backwards compatibility
+protectedRoutes.delete("/delete/:urlId", deleteUrl);
+protectedRoutes.delete("/:urlId", deleteUrl);
 
 protectedRoutes.post("/create", async (c) => {
     try {
@@ -160,6 +162,9 @@ protectedRoutes.get("/read", async (c) => {
 
     return c.json({ items: urlItems, cursor: nextCursor, hasMore }, 200);
 });
+// mount after all protected routes are defined, otherwise only the middleware is registered
+app.route("/api", protectedRoutes);
+
 // --- PUBLIC ROUTES ---
 
 app.get("/:urlId", async (c) => {
